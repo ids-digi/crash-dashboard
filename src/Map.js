@@ -7,7 +7,7 @@ import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 
 function Map(props) {
-    const { hexVisibility } = props
+    const { hexVisibility, hexOpacity, dotSize } = props
     mapboxgl.accessToken = 'pk.eyJ1IjoiY3RlcmJ1c2giLCJhIjoiY2t0dnZrYjM4MmU0aDJvbzM1dTFqbDY1NiJ9.zdZur9mZOlVhIxAoiqVwBA'
 
     const [long, setLong] = useState(-86.52702437238956);
@@ -24,6 +24,8 @@ function Map(props) {
     const cellSide = .5;
     const options = {};
     const hexGridData = turf.hexGrid(bbox, cellSide, options);
+
+    // console.log(hexGridData)
 
     useEffect(() => {
         fetch(data)
@@ -42,7 +44,8 @@ function Map(props) {
                 container: mapContainer.current,
                 style: "mapbox://styles/mapbox/dark-v10", // stylesheet location
                 center: [long, lat],
-                zoom: zoom
+                zoom: zoom,
+                minZoom: 10
             }).fitBounds([
                 [-86.61974841955835, 39.111017400606066],
                 [-86.46310073817295, 39.21646913099789]
@@ -51,10 +54,13 @@ function Map(props) {
                     accessToken: mapboxgl.accessToken,
                     mapboxgl: mapboxgl
                 })
-            );
+            )
+
+            // console.log(data)
 
             hexGridData.features.map((hex) => {
                 hex.properties.numPoints = turf.within(data, hex).features.length
+                // console.log(hex.properties.numPoints)
                 return hex
             })
 
@@ -63,6 +69,13 @@ function Map(props) {
                     return prev.properties.numPoints > current.properties.numPoints ? prev : current
                 }
             )
+
+            hexGridData.features.map((hex) => {
+                // console.log(binWMostPoints)
+                hex.properties.density = hex.properties.numPoints / binWMostPoints.properties.numPoints
+                // console.log(hex.properties.numPoints + ' / ' + binWMostPoints.properties.numPoints)
+                return hex
+            })
 
             map.on("load", () => {
                 setMap(map)
@@ -88,40 +101,57 @@ function Map(props) {
                 })
 
                 map.addLayer({
-                    'id': 'maine',
-                    'type': 'fill',
-                    'source': {
+                    id: 'hexBins',
+                    type: 'fill',
+                    source: {
                         'type': 'geojson',
                         'data': hexGridData
                     },
                     'layout': {
-                        'visibility': hexVisibility == true ? 'visible' : 'none'
+                        'visibility': 'visible'
                     },
                     'paint': {
                         'fill-color': '#088',
                         'fill-opacity': [
-                            "interpolate", ["linear"], ["get", "numPoints"],
+                            "interpolate", ["linear"], ["get", "density"],
                             // if there are zero points, opacity = 0
                             0, 0,
-                            // if the number of points = the max, opacity = 60%
-                            binWMostPoints.properties.numPoints, .6
+                            // if the density = 1, opacity = 60%
+                            1, .8
                         ]
                     }
                 })
 
             })
-
-            // map.on('idle', () => {
-
-            // })
-
-
-        };
+        }
 
         if (!map) initializeMap({ setMap, mapContainer });
 
+    }, [data]);
 
-    }, [map, data, hexVisibility]);
+    useEffect(() => {
+        if (map) {
+            map.setLayoutProperty('hexBins', 'visibility', hexVisibility ? 'visible' : 'none');
+        }
+    }, [hexVisibility])
+
+    useEffect(() => {
+        if (map) {
+            map.setPaintProperty('hexBins', 'fill-opacity', [
+                "interpolate", ["linear"], ["get", "density"],
+                // if there are zero points, opacity = 0
+                0, 0,
+                // if the density = 1, opacity = 60%
+                1, hexOpacity * .2
+            ])
+        }
+    }, [hexOpacity])
+
+    useEffect(() => {
+        if (map) {
+            map.setPaintProperty('points', 'circle-radius', dotSize * 1.5)
+        }
+    }, [dotSize])
 
     return (
         <div ref={mapContainer} className="mapContainer" />

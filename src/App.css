@@ -1,9 +1,6 @@
-.App {
-  /* text-align: center; */
-}
-
 body {
   font-family: 'Fira Sans', Helvetica, sans-serif;
+  font-size: 14px;
 }
 
 header {
@@ -26,8 +23,42 @@ header {
   border-right: 1px solid gray;
 }
 
+.dashControl {
+  margin-bottom: 15px;
+  margin-top: 10px;
+}
+
 h1 {
-  font-size: 28px;
+  font-size: 24px;
+  margin-bottom: 0;
+  margin-top: .25em;
+}
+
+p {
+  font-size: 14px;
+  margin-top: .5em;
+}
+
+svg {
+  max-width: 50px;
+  margin-top: 10px;
+  /* margin-left: auto;
+  display: block; */
+}
+
+a:link,
+a:visited {
+  color: rgb(84, 84, 84);
+
+}
+
+a:hover,
+a:active {}
+
+h2 {
+  font-size: 18px;
+  margin: 1.0em 0 .5em;
+  color: rgb(84, 84, 84);
 }
 
 .mapContainer {
@@ -35,4 +66,52 @@ h1 {
   height: 100vh;
   position: absolute;
   transition: 0;
+}
+
+.react-slider {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.react-slider.disabled {
+  opacity: .5;
+}
+
+.thumb {
+  cursor: pointer;
+  /*color for the thumb */
+  background: #088;
+  /* shape of the thumb: circle */
+  width: 15px;
+  height: 15px;
+  border-radius: 100%;
+  /* remove default outline when selected */
+  outline: none;
+  /* transition: .2s; */
+}
+
+.disabled .thumb {
+  cursor: auto;
+  background: rgb(107, 107, 107);
+}
+
+.track {
+  top: 5px;
+  /* thickness of the track */
+  height: 4px;
+  /* default color of your track */
+  background: rgb(173, 173, 173);
+}
+
+.track.track-0 {
+  background: #088;
+}
+
+.disabled .track.track-0 {
+  background: rgb(107, 107, 107);
+}
+
+.small-label {
+  font-size: 12px;
+  margin-top: 1.2em;
 }
