@@ -8,6 +8,8 @@ import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 function Map(props) {
     const { hexVisibility, districtVisibility, data, hexGridData } = props
 
+    // console.log(hexGridData)
+
     const [map, setMap] = useState(null);
     const mapContainer = useRef(null);
 
@@ -134,7 +136,14 @@ function Map(props) {
                     'layout': {},
                     'paint': {
                         'line-color': borderColor,
-                        'line-width': ['match', ['get', 'density'], 0, 0, 1]
+                        // 'line-width': ['match', ['get', 'density'], 0, 0, 1]
+                        'line-width': [
+                            'case',
+                            ['boolean', ['feature-state', 'hover'], false],
+                            ['match', ['get', 'density'], 0, 0, 4],
+                            ['match', ['get', 'density'], 0, 0, 1]
+                        ]
+
                     }
                 })
 
@@ -160,68 +169,7 @@ function Map(props) {
                     }
                 })
 
-                /*
-                    POPUPS & HOVER EFFECTS
-                */
-                // Create a popup, but don't add it to the map yet.
-                const popup = new mapboxgl.Popup({
-                    closeButton: false,
-                    closeOnClick: false
-                })
 
-                // display the popup when a point is hovered over
-                map.on('mouseenter', 'points', (e) => {
-                    // Change the cursor style as a UI indicator.
-                    map.getCanvas().style.cursor = 'pointer';
-
-                    // Copy coordinates array.
-                    const coordinates = e.features[0].geometry.coordinates.slice()
-                    const primaryFactor = e.features[0].properties["Primary Factor"]
-                    const date = e.features[0].properties.DateTime
-
-                    // Ensure that if the map is zoomed out such that multiple
-                    // copies of the feature are visible, the popup appears
-                    // over the copy being pointed to.
-                    while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-                        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-                    }
-
-                    let popupHTML = `
-                            <p style=margin-bottom:0;><strong>${new Date(date).toLocaleDateString('en-us', { hour: "numeric", year: "numeric", month: "short", day: "numeric" })}</strong></p>
-                            <p style=margin-bottom:0;>Primary factor: ${primaryFactor.charAt(0).toUpperCase() + primaryFactor.slice(1).toLowerCase()}</p>
-                        `
-
-                    // Populate the popup and set its coordinates
-                    // based on the feature found.
-                    popup.setLngLat(coordinates).setHTML(popupHTML).addTo(map);
-                })
-
-                // hide the popup when the point is no longer hovered
-                map.on('mouseleave', 'points', () => {
-                    map.getCanvas().style.cursor = '';
-                    popup.remove();
-                })
-
-                // hover effect => council districts
-                let hoveredStateId = null;
-
-                // map.on('mousemove', 'districts', (e) => {
-                //     console.log(e.features[0])
-
-                //     if (e.features.length > 0) {
-                //         if (hoveredStateId !== null) {
-                //             map.setFeatureState(
-                //                 { source: 'council-districts', id: hoveredStateId },
-                //                 { hover: false }
-                //             );
-                //         }
-                //         hoveredStateId = e.features[0].properties.district_id;
-                //         map.setFeatureState(
-                //             { source: 'council-districts', id: hoveredStateId },
-                //             { hover: true }
-                //         );
-                //     }
-                // })
 
             })
         }
@@ -230,13 +178,147 @@ function Map(props) {
 
     }, [data, hexGridData]);
 
+
+    /*
+        POPUPS & HOVER EFFECTS
+    */
+    useEffect(() => {
+
+        if (map) {
+            // Create a popup, but don't add it to the map yet.
+            const popup = new mapboxgl.Popup({
+                closeButton: false,
+                closeOnClick: false,
+                className: 'popup'
+            })
+
+            // display the popup when a point is hovered over
+            map.on('mouseenter', 'points', (e) => {
+                // Change the cursor style as a UI indicator.
+                map.getCanvas().style.cursor = 'pointer';
+
+                // Copy coordinates array.
+                const coordinates = e.features[0].geometry.coordinates.slice()
+                const primaryFactor = e.features[0].properties["Primary Factor"]
+                const date = e.features[0].properties.DateTime
+
+                // Ensure that if the map is zoomed out such that multiple
+                // copies of the feature are visible, the popup appears
+                // over the copy being pointed to.
+                while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                    coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                }
+
+                let popupHTML = `
+                            <p style=margin-bottom:0;><strong>${new Date(date).toLocaleDateString('en-us', { hour: "numeric", year: "numeric", month: "short", day: "numeric" })}</strong></p>
+                            <p style=margin-bottom:0;>Primary factor: ${primaryFactor ? primaryFactor.charAt(0).toUpperCase() + primaryFactor.slice(1).toLowerCase() : 'Not listed'}</p>
+                        `
+
+                // Populate the popup and set its coordinates
+                // based on the feature found.
+                popup.setLngLat(coordinates).setHTML(popupHTML).addTo(map);
+            })
+
+            // display the popup when a hexbin is hovered over
+            map.on('mousemove', 'hexBins', (e) => {
+                // Change the cursor style as a UI indicator.
+                map.getCanvas().style.cursor = 'pointer';
+
+                // Get coordinates
+                const vertices = e.features[0].geometry.coordinates[0]
+                // average of top two vertices
+                const coordinates = [((vertices[1][0] + vertices[2][0]) / 2), vertices[4][1]]
+                const numCrashes = e.features[0].properties.numPoints
+                const data = JSON.parse(e.features[0].properties.data)
+
+                let totalDeaths = 0
+                let totalInjuries = 0
+                if (data.length > 0) {
+                    totalDeaths = data.reduce(
+                        (acc, current) => acc + current['Number Dead'], 0
+                    )
+                    totalInjuries = data.reduce(
+                        (acc, current) => acc + current['Number Injured'], 0
+                    )
+                }
+
+                let popupHTML = `
+                            <span style=margin-bottom:0;><strong>${numCrashes}</strong> crash${numCrashes > 1 ? `es` : ''}</span>
+                            <span><strong>${totalDeaths}</strong> death${totalDeaths !== 1 ? `s` : ''}</span>
+                            <span><strong>${totalInjuries}</strong> injur${totalInjuries !== 1 ? `ies` : 'y'}</span>
+                        `
+
+                if (e.features[0].properties.numPoints > 0) {
+                    // // Populate the popup and set its coordinates
+                    // // based on the feature found.
+                    popup.setLngLat(coordinates).setHTML(popupHTML).addTo(map);
+                } else if (e.features[0].properties.numPoints == 0) {
+                    map.getCanvas().style.cursor = '';
+                    popup.remove();
+                }
+            }).on('mouseleave', 'hexBins', () => {
+                map.getCanvas().style.cursor = '';
+                popup.remove();
+            })
+
+            // hide the popup when the point is no longer hovered
+            map.on('mouseleave', 'points', () => {
+                map.getCanvas().style.cursor = '';
+                popup.remove();
+            })
+
+            // hover effect => council districts
+            let hoverId = null;
+
+            // map.on('mousemove', 'districts', (e) => {
+            //     console.log(e.features[0])
+
+            //     if (e.features.length > 0) {
+            //         if (hoveredStateId !== null) {
+            //             map.setFeatureState(
+            //                 { source: 'council-districts', id: hoveredStateId },
+            //                 { hover: false }
+            //             );
+            //         }
+            //         hoveredStateId = e.features[0].properties.district_id;
+            //         map.setFeatureState(
+            //             { source: 'council-districts', id: hoveredStateId },
+            //             { hover: true }
+            //         );
+            //     }
+            // })
+
+            map.on('mousemove', 'hexBins', (e) => {
+                console.log(e.features[0])
+                if (hoverId) {
+                    map.removeFeatureState({
+                        source: 'hexbin-data',
+                        id: hoverId
+                    })
+                }
+
+                hoverId = e.features[0].id
+
+                map.setFeatureState(
+                    {
+                        source: 'hexbin-data',
+                        id: hoverId
+                    },
+                    {
+                        hover: true
+                    }
+                )
+
+            })
+        }
+
+    }, [map])
+
     useEffect(() => {
         if (map) {
             map.setLayoutProperty('hexBins', 'visibility', hexVisibility ? 'visible' : 'none');
             map.setLayoutProperty('hex-borders', 'visibility', hexVisibility ? 'visible' : 'none');
         }
-
-        console.log(map)
 
     }, [hexVisibility])
 
@@ -246,8 +328,6 @@ function Map(props) {
             map.setLayoutProperty('district-labels', 'visibility', districtVisibility ? 'visible' : 'none');
             map.setLayoutProperty('district-borders', 'visibility', districtVisibility ? 'visible' : 'none');
         }
-
-        console.log(map)
     }, [districtVisibility])
 
     return (
