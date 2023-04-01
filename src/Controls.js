@@ -13,7 +13,7 @@ function Controls(props) {
     } = props
     return (
         <div className="Controls">
-            <svg viewBox="0 0 163.17 68.85">
+            <svg className="logo" viewBox="0 0 163.17 68.85">
                 <path style={{ fill: "#990000" }} d="M0,67.77V1.08H19.89V67.77Z" />
                 <path style={{ fill: "#990000" }}
                     d="M32.85,67.77V1.08H58.32c19.44,0,38.34,6.21,38.34,33.3,0,26.64-20.07,33.39-39.6,33.39ZM52.74,50.4h5.85c12.06,0,17.91-4.41,17.91-16s-5.67-15.3-18.81-15.3H52.74Z" />

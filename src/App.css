@@ -39,7 +39,7 @@ p {
   margin-top: .5em;
 }
 
-svg {
+svg.logo {
   max-width: 50px;
   margin-top: 10px;
   /* margin-left: auto;

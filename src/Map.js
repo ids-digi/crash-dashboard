@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import geojson from './data/master_crash_clean.geojson'
+import districts from './data/city-council-districts.geojson'
 import * as turf from '@turf/turf'
 import mapboxgl from 'mapbox-gl';
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -14,6 +15,8 @@ function Map(props) {
     const [lat, setLat] = useState(39.1656613635316);
     const [zoom, setZoom] = useState(12);
     const [data, setData] = useState(geojson)
+
+
 
     // const [hexVisibility, setHexVisibility] = useState('visible')
 
@@ -37,7 +40,6 @@ function Map(props) {
     }, [])
 
     useEffect(() => {
-        console.log('rendering map, hex visibility == ', hexVisibility)
         // mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_KEY;
         const initializeMap = ({ setMap, mapContainer }) => {
             const map = new mapboxgl.Map({
@@ -56,11 +58,8 @@ function Map(props) {
                 })
             )
 
-            // console.log(data)
-
             hexGridData.features.map((hex) => {
                 hex.properties.numPoints = turf.within(data, hex).features.length
-                // console.log(hex.properties.numPoints)
                 return hex
             })
 
@@ -71,10 +70,14 @@ function Map(props) {
             )
 
             hexGridData.features.map((hex) => {
-                // console.log(binWMostPoints)
                 hex.properties.density = hex.properties.numPoints / binWMostPoints.properties.numPoints
-                // console.log(hex.properties.numPoints + ' / ' + binWMostPoints.properties.numPoints)
                 return hex
+            })
+
+            // Create a popup, but don't add it to the map yet.
+            const popup = new mapboxgl.Popup({
+                closeButton: false,
+                closeOnClick: false
             })
 
             map.on("load", () => {
@@ -84,6 +87,22 @@ function Map(props) {
                 map.addSource('crash-data-source', {
                     'type': 'geojson',
                     'data': data
+                })
+
+                map.addSource('council-districts', {
+                    'type': 'geojson',
+                    'data': districts
+                })
+
+                map.addLayer({
+                    id: 'districts',
+                    type: 'fill',
+                    source: 'council-districts',
+                    // filter: ['!', ['has', 'point_count']],
+                    paint: {
+                        'fill-color': '#0080ff', // blue color fill
+                        'fill-opacity': 0.5
+                    }
                 })
 
                 map.addLayer({
@@ -122,6 +141,37 @@ function Map(props) {
                     }
                 })
 
+                    .on('mouseenter', 'points', (e) => {
+                        // Change the cursor style as a UI indicator.
+                        map.getCanvas().style.cursor = 'pointer';
+
+                        // Copy coordinates array.
+                        const coordinates = e.features[0].geometry.coordinates.slice()
+                        const primaryFactor = e.features[0].properties["Primary Factor"]
+                        const date = e.features[0].properties.DateTime
+
+                        // Ensure that if the map is zoomed out such that multiple
+                        // copies of the feature are visible, the popup appears
+                        // over the copy being pointed to.
+                        while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                            coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                        }
+
+                        let popupHTML = `
+                            <p style=margin-bottom:0;><strong>${new Date(date).toLocaleDateString('en-us', { hour: "numeric", year: "numeric", month: "short", day: "numeric" })}</strong></p>
+                            <p style=margin-bottom:0;>Primary factor: ${primaryFactor.charAt(0).toUpperCase() + primaryFactor.slice(1).toLowerCase()}</p>
+                        `
+
+                        // Populate the popup and set its coordinates
+                        // based on the feature found.
+                        popup.setLngLat(coordinates).setHTML(popupHTML).addTo(map);
+                    });
+
+                map.on('mouseleave', 'points', () => {
+                    map.getCanvas().style.cursor = '';
+                    popup.remove();
+                });
+
             })
         }
 
@@ -152,6 +202,10 @@ function Map(props) {
             map.setPaintProperty('points', 'circle-radius', dotSize * 1.5)
         }
     }, [dotSize])
+
+    // useEffect(() => {
+    //     console.log(new Date().toLocaleDateString('en-us', { hour: "numeric", year: "numeric", month: "short", day: "numeric" }))
+    // })
 
     return (
         <div ref={mapContainer} className="mapContainer" />

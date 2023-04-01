@@ -43,7 +43,7 @@ function ControlButton(props) {
         case "slider":
             return (
                 <div className="dashControl">
-                    <label class={`react-slider ${flagSecondary !== 'null' ? !flagSecondary ? 'disabled' : '' : ''}`}>
+                    <label className={`react-slider ${flagSecondary !== 'null' ? !flagSecondary ? 'disabled' : '' : ''}`}>
                         <span>{textOn}</span>
                         <ReactSlider
                             disabled={flagSecondary !== 'null' ? !flagSecondary : false}
