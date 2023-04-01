@@ -8,17 +8,10 @@ import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 
 function Map(props) {
-    const { hexVisibility, hexOpacity, dotSize } = props
+    const { hexVisibility, hexOpacity, dotSize, districtVisibility } = props
     mapboxgl.accessToken = 'pk.eyJ1IjoiY3RlcmJ1c2giLCJhIjoiY2t0dnZrYjM4MmU0aDJvbzM1dTFqbDY1NiJ9.zdZur9mZOlVhIxAoiqVwBA'
 
-    const [long, setLong] = useState(-86.52702437238956);
-    const [lat, setLat] = useState(39.1656613635316);
-    const [zoom, setZoom] = useState(12);
     const [data, setData] = useState(geojson)
-
-
-
-    // const [hexVisibility, setHexVisibility] = useState('visible')
 
     const [map, setMap] = useState(null);
     const mapContainer = useRef(null);
@@ -45,8 +38,8 @@ function Map(props) {
             const map = new mapboxgl.Map({
                 container: mapContainer.current,
                 style: "mapbox://styles/mapbox/dark-v10", // stylesheet location
-                center: [long, lat],
-                zoom: zoom,
+                center: [-86.52702437238956, 39.1656613635316],
+                zoom: 12,
                 minZoom: 10
             }).fitBounds([
                 [-86.61974841955835, 39.111017400606066],
@@ -100,9 +93,15 @@ function Map(props) {
                     source: 'council-districts',
                     // filter: ['!', ['has', 'point_count']],
                     paint: {
-                        'fill-color': '#0080ff', // blue color fill
-                        'fill-opacity': 0.5
-                    }
+                        'fill-color': 'rgba(255,255,255,0.1)',
+                        'fill-opacity': ['case',
+                            ['boolean', ['feature-state', 'hover'], false],
+                            0.8,
+                            0.5
+                        ]
+                        // 'fill-outline-color': 'white',
+                        // 'fill-outline-width': 3
+                    },
                 })
 
                 map.addLayer({
@@ -112,7 +111,7 @@ function Map(props) {
                     // filter: ['!', ['has', 'point_count']],
                     paint: {
                         'circle-color': "#3182bd",
-                        'circle-radius': 2.5,
+                        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 1, 12, 1.5, 20, 20],
                         'circle-stroke-width': 1,
                         'circle-stroke-color': 'transparent',
                         'circle-opacity': 0.3
@@ -141,36 +140,84 @@ function Map(props) {
                     }
                 })
 
-                    .on('mouseenter', 'points', (e) => {
-                        // Change the cursor style as a UI indicator.
-                        map.getCanvas().style.cursor = 'pointer';
+                map.addLayer({
+                    'id': 'district-labels',
+                    'type': 'symbol',
+                    'source': 'council-districts',
+                    'layout': {
+                        'text-field': [
+                            'format',
+                            ['get', 'district_name'],
+                            { 'font-scale': 0.8 }
+                        ],
+                        // 'text-font': ['Fira Sans', 'Arial Unicode MS Bold']
+                    },
+                    "paint": {
+                        "text-color": "#ffffff"
+                    }
+                });
 
-                        // Copy coordinates array.
-                        const coordinates = e.features[0].geometry.coordinates.slice()
-                        const primaryFactor = e.features[0].properties["Primary Factor"]
-                        const date = e.features[0].properties.DateTime
+                map.addLayer({
+                    'id': 'district-borders',
+                    'type': 'line',
+                    'source': 'council-districts',
+                    'layout': {},
+                    'paint': {
+                        'line-color': 'gray',
+                        'line-width': 1
+                    }
+                })
 
-                        // Ensure that if the map is zoomed out such that multiple
-                        // copies of the feature are visible, the popup appears
-                        // over the copy being pointed to.
-                        while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-                            coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-                        }
+                let hoveredStateId = null;
 
-                        let popupHTML = `
+                map.on('mouseenter', 'points', (e) => {
+                    // Change the cursor style as a UI indicator.
+                    map.getCanvas().style.cursor = 'pointer';
+
+                    // Copy coordinates array.
+                    const coordinates = e.features[0].geometry.coordinates.slice()
+                    const primaryFactor = e.features[0].properties["Primary Factor"]
+                    const date = e.features[0].properties.DateTime
+
+                    // Ensure that if the map is zoomed out such that multiple
+                    // copies of the feature are visible, the popup appears
+                    // over the copy being pointed to.
+                    while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                    }
+
+                    let popupHTML = `
                             <p style=margin-bottom:0;><strong>${new Date(date).toLocaleDateString('en-us', { hour: "numeric", year: "numeric", month: "short", day: "numeric" })}</strong></p>
                             <p style=margin-bottom:0;>Primary factor: ${primaryFactor.charAt(0).toUpperCase() + primaryFactor.slice(1).toLowerCase()}</p>
                         `
 
-                        // Populate the popup and set its coordinates
-                        // based on the feature found.
-                        popup.setLngLat(coordinates).setHTML(popupHTML).addTo(map);
-                    });
+                    // Populate the popup and set its coordinates
+                    // based on the feature found.
+                    popup.setLngLat(coordinates).setHTML(popupHTML).addTo(map);
+                });
 
                 map.on('mouseleave', 'points', () => {
                     map.getCanvas().style.cursor = '';
                     popup.remove();
                 });
+
+                map.on('mousemove', 'districts', (e) => {
+                    console.log(e.features[0])
+
+                    if (e.features.length > 0) {
+                        if (hoveredStateId !== null) {
+                            map.setFeatureState(
+                                { source: 'council-districts', id: hoveredStateId },
+                                { hover: false }
+                            );
+                        }
+                        hoveredStateId = e.features[0].properties.district_id;
+                        map.setFeatureState(
+                            { source: 'council-districts', id: hoveredStateId },
+                            { hover: true }
+                        );
+                    }
+                })
 
             })
         }
@@ -183,7 +230,17 @@ function Map(props) {
         if (map) {
             map.setLayoutProperty('hexBins', 'visibility', hexVisibility ? 'visible' : 'none');
         }
+
+        console.log(map)
+
     }, [hexVisibility])
+
+    useEffect(() => {
+        if (map) {
+            map.setLayoutProperty('districts', 'visibility', districtVisibility ? 'visible' : 'none');
+            map.setLayoutProperty('district-labels', 'visibility', districtVisibility ? 'visible' : 'none');
+        }
+    }, [districtVisibility])
 
     useEffect(() => {
         if (map) {
@@ -197,15 +254,12 @@ function Map(props) {
         }
     }, [hexOpacity])
 
-    useEffect(() => {
-        if (map) {
-            map.setPaintProperty('points', 'circle-radius', dotSize * 1.5)
-        }
-    }, [dotSize])
-
     // useEffect(() => {
-    //     console.log(new Date().toLocaleDateString('en-us', { hour: "numeric", year: "numeric", month: "short", day: "numeric" }))
-    // })
+    //     if (map) {
+    //         const dotSizes = [2.5, 4, 8.5, 10]
+    //         map.setPaintProperty('points', 'circle-radius', dotSizes[parseInt(dotSize) - 1])
+    //     }
+    // }, [dotSize])
 
     return (
         <div ref={mapContainer} className="mapContainer" />

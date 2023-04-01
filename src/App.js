@@ -8,6 +8,7 @@ function App() {
   const [hexVisibility, setHexVisibility] = useState(true)
   const [hexOpacity, setHexOpacity] = useState(2)
   const [dotSize, setDotSize] = useState(4)
+  const [districtVisibility, setDistrictVisibility] = useState(true)
 
   return (
     <div className="App">
@@ -18,8 +19,10 @@ function App() {
         setHexOpacity={setHexOpacity}
         dotSize={dotSize}
         setDotSize={setDotSize}
+        districtVisibility={districtVisibility}
+        setDistrictVisibility={setDistrictVisibility}
       />
-      <Map hexVisibility={hexVisibility} hexOpacity={hexOpacity} dotSize={dotSize} />
+      <Map hexVisibility={hexVisibility} hexOpacity={hexOpacity} dotSize={dotSize} districtVisibility={districtVisibility} />
     </div>
   )
 }

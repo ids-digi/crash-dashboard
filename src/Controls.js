@@ -9,7 +9,9 @@ function Controls(props) {
         hexOpacity,
         setHexOpacity,
         dotSize,
-        setDotSize
+        setDotSize,
+        districtVisibility,
+        setDistrictVisibility
     } = props
     return (
         <div className="Controls">
@@ -28,27 +30,34 @@ function Controls(props) {
             <h2>Style</h2>
             <ControlButton
                 type="toggle"
+                textOn="Districts shown"
+                textOff="Districts hidden"
+                flag={districtVisibility}
+                setFlag={setDistrictVisibility}
+            />
+            <ControlButton
+                type="toggle"
                 textOn="Hexbins shown"
                 textOff="Hexbins hidden"
                 flag={hexVisibility}
                 setFlag={setHexVisibility}
             />
-            <ControlButton
+            {/* <ControlButton
                 type="slider"
                 textOn="Hexbin opacity"
                 flag={hexOpacity}
                 setFlag={setHexOpacity}
                 flagSecondary={hexVisibility}
                 smallLabels={["Lighter", "Darker"]}
-            />
-            <ControlButton
+            /> */}
+            {/* <ControlButton
                 type="slider"
                 textOn="Dot size"
                 flag={dotSize}
                 setFlag={setDotSize}
                 flagSecondary={'null'}
                 smallLabels={["Smaller", "Larger"]}
-            />
+            /> */}
         </div>
     )
 }
