@@ -17,6 +17,8 @@ function Map(props) {
     const hexColor = "rgb(119, 216, 240)"
     const pointColor = "yellow"
     const borderColor = "rgb(53, 53, 53)"
+    // const borderColor = "rgb(168, 152, 152)"
+    const labelColor = "rgb(120,120,120)"
 
     useEffect(() => {
 
@@ -104,7 +106,7 @@ function Map(props) {
                         ],
                     },
                     "paint": {
-                        "text-color": borderColor
+                        "text-color": labelColor
                     }
                 })
 
@@ -235,10 +237,10 @@ function Map(props) {
                 let totalInjuries = 0
                 if (data.length > 0) {
                     totalDeaths = data.reduce(
-                        (acc, current) => acc + current['Number Dead'], 0
+                        (acc, current) => acc + current.n ? current.n : 0, 0
                     )
                     totalInjuries = data.reduce(
-                        (acc, current) => acc + current['Number Injured'], 0
+                        (acc, current) => acc + current.a ? current.a : 0, 0
                     )
                 }
 
@@ -289,7 +291,6 @@ function Map(props) {
             // })
 
             map.on('mousemove', 'hexBins', (e) => {
-                console.log(e.features[0])
                 if (hoverId) {
                     map.removeFeatureState({
                         source: 'hexbin-data',
