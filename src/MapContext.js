@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react"
 import './App.css'
 import Map from './Map.js'
-import geojson from './data/master_crash_clean.geojson'
+// import geojson from './data/master_crash_clean.min.geojson'
+import geojson from './data/master_crash_clean.sample.geojson'
 import mapboxgl from 'mapbox-gl';
 import * as turf from '@turf/turf'
 
