@@ -1,3 +1,11 @@
+:root {
+  --point-color: yellow;
+  --hex-color: blue;
+  --district-color: rgba(255, 255, 255, .2);
+  --district-label-color: rgb(119, 216, 240);
+  --light-gray: lightgray;
+}
+
 body {
   font-family: 'Fira Sans', Helvetica, sans-serif;
   font-size: 14px;
@@ -18,7 +26,9 @@ header {
   /* right: 220px;
   top: 0; */
   z-index: 100;
-  padding: 15px;
+  padding-left: 15px;
+  padding-right: 15px;
+  margin-bottom: 15px;
   /* box-shadow: 0 1px 10px white; */
   border-right: 1px solid gray;
 }
@@ -41,7 +51,7 @@ p {
 
 svg.logo {
   max-width: 50px;
-  margin-top: 10px;
+  margin-top: 20px;
   /* margin-left: auto;
   display: block; */
 }
