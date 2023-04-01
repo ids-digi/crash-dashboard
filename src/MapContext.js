@@ -21,8 +21,11 @@ function MapContext(props) {
         const options = {};
         const hexagons = turf.hexGrid(bbox, cellSide, options);
 
-        hexagons.features.map((hex) => {
-            hex.properties.numPoints = turf.within(data, hex).features.length
+        hexagons.features.map((hex, i) => {
+            const internalData = turf.within(data, hex).features
+            hex.id = i
+            hex.properties.data = internalData.map((d) => d.properties)
+            hex.properties.numPoints = internalData.length
             return hex
         })
 
