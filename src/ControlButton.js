@@ -28,9 +28,11 @@ function ControlButton(props) {
                     <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span>{text}</span>
                         <Switch
+                            className={'react-switch'}
                             onChange={onChange}
                             checked={flag}
                             // onColor={"#000"}
+                            offColor={"#bda8a8"}
                             handleDiameter={16}
                             checkedIcon={false}
                             uncheckedIcon={<Fragment />}
