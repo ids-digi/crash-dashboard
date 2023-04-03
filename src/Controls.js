@@ -7,7 +7,13 @@ function Controls(props) {
         hexVisibility,
         setHexVisibility,
         districtVisibility,
-        setDistrictVisibility
+        setDistrictVisibility,
+        showDeaths,
+        setShowDeaths,
+        showInjuries,
+        setShowInjuries,
+        showMinorCrashes,
+        setShowMinorCrashes
     } = props
     return (
         <div className="Controls" style={{
@@ -28,6 +34,27 @@ function Controls(props) {
                 <p><em><a href="#" >About the data</a></em></p>
 
                 <h2>Filters</h2>
+                <ControlButton
+                    type="toggle"
+                    textOn="Fatal crashes shown"
+                    textOff="Fatal crashes hidden"
+                    flag={showDeaths}
+                    setFlag={setShowDeaths}
+                />
+                <ControlButton
+                    type="toggle"
+                    textOn="Injuries shown"
+                    textOff="Injuries hidden"
+                    flag={showInjuries}
+                    setFlag={setShowInjuries}
+                />
+                <ControlButton
+                    type="toggle"
+                    textOn="Other crashes shown"
+                    textOff="Other crashes hidden"
+                    flag={showMinorCrashes}
+                    setFlag={setShowMinorCrashes}
+                />
 
                 <h2>Style</h2>
                 <ControlButton
@@ -36,6 +63,7 @@ function Controls(props) {
                     textOff="City council districts hidden"
                     flag={districtVisibility}
                     setFlag={setDistrictVisibility}
+                    setSecondaryFlag={setHexVisibility}
                 />
                 <ControlButton
                     type="toggle"
@@ -43,6 +71,7 @@ function Controls(props) {
                     textOff="Hexbins hidden"
                     flag={hexVisibility}
                     setFlag={setHexVisibility}
+                    setSecondaryFlag={setDistrictVisibility}
                 />
             </div>
             <p><strong>Source:</strong> <a href="#">IDS analysis</a> of <a href="https://data.bloomington.in.gov/dataset/traffic-data">Bloomington traffic data</a></p>

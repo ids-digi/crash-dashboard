@@ -5,7 +5,7 @@ import ReactSlider from 'react-slider'
 
 function ControlButton(props) {
 
-    const { type, textOn, textOff, flag, setFlag, flagSecondary, smallLabels } = props
+    const { type, textOn, textOff, flag, setFlag, flagSecondary, smallLabels, setSecondaryFlag } = props
 
     const [text, setText] = useState(textOn)
 
@@ -13,6 +13,10 @@ function ControlButton(props) {
 
         if (type == "toggle") {
             setFlag(!flag)
+            if (setSecondaryFlag) {
+                // console.log('setting secondary flag', setSecondaryFlag)
+                setSecondaryFlag(flag)
+            }
             setText(flag ? textOff : textOn)
         } else if (type == "slider") {
 

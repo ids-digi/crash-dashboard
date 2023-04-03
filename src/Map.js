@@ -6,7 +6,15 @@ import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 
 function Map(props) {
-    const { hexVisibility, districtVisibility, data, hexGridData } = props
+    const {
+        data,
+        hexVisibility,
+        districtVisibility,
+        hexGridData,
+        showDeaths,
+        showInjuries,
+        showMinorCrashes
+    } = props
 
     // console.log(hexGridData)
 
@@ -16,6 +24,7 @@ function Map(props) {
     const districtColor = "rgba(255,255,255,0.2)"
     const hexColor = "rgb(119, 216, 240)"
     const pointColor = "yellow"
+    const pointColorDeath = "red"
     const borderColor = "rgb(53, 53, 53)"
     // const borderColor = "rgb(168, 152, 152)"
     const labelColor = "rgb(120,120,120)"
@@ -155,7 +164,15 @@ function Map(props) {
                     type: 'circle',
                     source: 'crash-data-source',
                     paint: {
-                        'circle-color': pointColor,
+                        'circle-color': [
+                            'case',
+                            // if it has the "n" property, that means there was at least 1 death
+                            // since the geojson is minified, all entries with 0 or NaN listed
+                            // for the number of deaths had the "n" property removed
+                            ['boolean', ['has', 'n'], false],
+                            pointColorDeath,
+                            pointColor
+                        ],
                         // adjust circle radius based on zoom level
                         'circle-radius': ['interpolate', ['linear'], ['zoom'],
                             // at zoom level 10 => 1 px
@@ -164,10 +181,17 @@ function Map(props) {
                             12, 1.5,
                             14, 3,
                             // at zoom level 20 => 20 px
-                            20, 20],
+                            20, 20
+                        ],
                         // no stroke
                         'circle-stroke-width': 0,
-                        'circle-opacity': 0.3
+                        'circle-opacity': [
+                            'case',
+                            ['boolean', ['has', 'n'], false],
+                            1,
+                            .3
+                        ],
+                        // filter: ['has', 'n']
                     }
                 })
 
@@ -201,8 +225,10 @@ function Map(props) {
 
                 // Copy coordinates array.
                 const coordinates = e.features[0].geometry.coordinates.slice()
-                const primaryFactor = e.features[0].properties["Primary Factor"]
-                const date = e.features[0].properties.DateTime
+                const primaryFactor = e.features[0].properties.p
+                const date = e.features[0].properties.d
+                const deaths = e.features[0].properties.n
+                const injuries = e.features[0].properties.a
 
                 // Ensure that if the map is zoomed out such that multiple
                 // copies of the feature are visible, the popup appears
@@ -211,9 +237,15 @@ function Map(props) {
                     coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
                 }
 
+                console.log(e.features[0].properties)
+
                 let popupHTML = `
                             <p style=margin-bottom:0;><strong>${new Date(date).toLocaleDateString('en-us', { hour: "numeric", year: "numeric", month: "short", day: "numeric" })}</strong></p>
-                            <p style=margin-bottom:0;>Primary factor: ${primaryFactor ? primaryFactor.charAt(0).toUpperCase() + primaryFactor.slice(1).toLowerCase() : 'Not listed'}</p>
+                            <p style=margin-bottom:0;><strong>Primary factor:</strong> ${primaryFactor ? primaryFactor.charAt(0).toUpperCase() + primaryFactor.slice(1).toLowerCase() : 'Not listed'}</p>
+                            <div style="display: flex; justify-content: space-between;">
+                            <p style=margin-bottom:0;><strong>Deaths:</strong> ${deaths ? deaths : '0'}</p>
+                            <p style=margin-bottom:0;><strong>Injuries:</strong> ${injuries ? injuries : '0'}</p>
+                            </div>
                         `
 
                 // Populate the popup and set its coordinates
@@ -237,10 +269,10 @@ function Map(props) {
                 let totalInjuries = 0
                 if (data.length > 0) {
                     totalDeaths = data.reduce(
-                        (acc, current) => acc + current.n ? current.n : 0, 0
+                        (acc, current) => acc + (current.n ? current.n : 0), 0
                     )
                     totalInjuries = data.reduce(
-                        (acc, current) => acc + current.a ? current.a : 0, 0
+                        (acc, current) => acc + (current.a ? current.a : 0), 0
                     )
                 }
 
@@ -319,6 +351,10 @@ function Map(props) {
         if (map) {
             map.setLayoutProperty('hexBins', 'visibility', hexVisibility ? 'visible' : 'none');
             map.setLayoutProperty('hex-borders', 'visibility', hexVisibility ? 'visible' : 'none');
+
+            map.setLayoutProperty('districts', 'visibility', hexVisibility ? 'none' : 'visible');
+            map.setLayoutProperty('district-labels', 'visibility', hexVisibility ? 'none' : 'visible');
+            map.setLayoutProperty('district-borders', 'visibility', hexVisibility ? 'none' : 'visible');
         }
 
     }, [hexVisibility])
@@ -328,8 +364,35 @@ function Map(props) {
             map.setLayoutProperty('districts', 'visibility', districtVisibility ? 'visible' : 'none');
             map.setLayoutProperty('district-labels', 'visibility', districtVisibility ? 'visible' : 'none');
             map.setLayoutProperty('district-borders', 'visibility', districtVisibility ? 'visible' : 'none');
+
+            map.setLayoutProperty('hexBins', 'visibility', districtVisibility ? 'none' : 'visible');
+            map.setLayoutProperty('hex-borders', 'visibility', districtVisibility ? 'none' : 'visible');
         }
     }, [districtVisibility])
+
+    useEffect(() => {
+        if (map) {
+            let filter1 = showDeaths ? ["has", "n"] : null
+            let filter2 = showInjuries ? ["has", "a"] : null
+            let filter3 = showMinorCrashes ? ['all', ["!has", "a"], ["!has", "n"]] : null
+
+            let fullFilter = []
+            if (filter1) {
+                fullFilter.push(filter1)
+            }
+            if (filter2) {
+                fullFilter.push(filter2)
+            }
+            if (filter3) {
+                fullFilter.push(filter3)
+            }
+
+            map.setFilter('points', ['any', ...fullFilter])
+
+            // console.log(map.style._layers.points.filter)
+        }
+    }, [showDeaths, showInjuries, showMinorCrashes])
+
 
     return (
         <div ref={mapContainer} className="mapContainer" />
@@ -338,3 +401,31 @@ function Map(props) {
 
 
 export default Map
+
+
+// 10, [
+//     'case',
+//     ['boolean', ['has', 'n'], false],
+//     1.5,
+//     1
+// ],
+// // at zoom level 12 => 1.5 px
+// 12, [
+//     'case',
+//     ['boolean', ['has', 'n'], false],
+//     2.25,
+//     1.5
+// ],
+// 14, [
+//     'case',
+//     ['boolean', ['has', 'n'], false],
+//     4.5,
+//     3
+// ],
+// // at zoom level 20 => 20 px
+// 20, [
+//     'case',
+//     ['boolean', ['has', 'n'], false],
+//     30,
+//     20
+// ]

@@ -2,13 +2,17 @@ import React, { useState, useEffect } from "react"
 import './App.css'
 import Map from './Map.js'
 // import geojson from './data/master_crash_clean.min.geojson'
-import geojson from './data/master_crash_clean.sample.geojson'
+import geojson from './data/master_crash_clean.sample.min.geojson'
 import mapboxgl from 'mapbox-gl';
 import * as turf from '@turf/turf'
 
 function MapContext(props) {
     const {
-        hexVisibility, districtVisibility
+        hexVisibility,
+        districtVisibility,
+        showDeaths,
+        showInjuries,
+        showMinorCrashes
     } = props
 
     mapboxgl.accessToken = 'pk.eyJ1IjoiY3RlcmJ1c2giLCJhIjoiY2t0dnZrYjM4MmU0aDJvbzM1dTFqbDY1NiJ9.zdZur9mZOlVhIxAoiqVwBA'
@@ -55,10 +59,13 @@ function MapContext(props) {
 
     return (
         <Map
+            data={data}
             hexVisibility={hexVisibility}
             districtVisibility={districtVisibility}
-            data={data}
             hexGridData={hexGridData}
+            showDeaths={showDeaths}
+            showInjuries={showInjuries}
+            showMinorCrashes={showMinorCrashes}
         />
     )
 }

@@ -7,7 +7,10 @@ import Controls from './Controls.js'
 function App() {
 
   const [hexVisibility, setHexVisibility] = useState(true)
-  const [districtVisibility, setDistrictVisibility] = useState(true)
+  const [districtVisibility, setDistrictVisibility] = useState(false)
+  const [showDeaths, setShowDeaths] = useState(true)
+  const [showInjuries, setShowInjuries] = useState(true)
+  const [showMinorCrashes, setShowMinorCrashes] = useState(true)
 
   return (
     <div className="App">
@@ -16,8 +19,21 @@ function App() {
         setHexVisibility={setHexVisibility}
         districtVisibility={districtVisibility}
         setDistrictVisibility={setDistrictVisibility}
+        showDeaths={showDeaths}
+        setShowDeaths={setShowDeaths}
+        showInjuries={showInjuries}
+        setShowInjuries={setShowInjuries}
+        showMinorCrashes={showMinorCrashes}
+        setShowMinorCrashes={setShowMinorCrashes}
+
       />
-      <MapContext hexVisibility={hexVisibility} districtVisibility={districtVisibility} />
+      <MapContext
+        hexVisibility={hexVisibility}
+        districtVisibility={districtVisibility}
+        showDeaths={showDeaths}
+        showInjuries={showInjuries}
+        showMinorCrashes={showMinorCrashes}
+      />
     </div>
   )
 }
