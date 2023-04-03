@@ -33,30 +33,72 @@ function Controls(props) {
                 <h1>Monroe County Crash Dashboard</h1>
                 <p><em><a href="#" >About the data</a></em></p>
 
-                <h2>Filters</h2>
-                <ControlButton
-                    type="toggle"
-                    textOn="Fatal crashes shown"
-                    textOff="Fatal crashes hidden"
-                    flag={showDeaths}
-                    setFlag={setShowDeaths}
-                />
-                <ControlButton
-                    type="toggle"
-                    textOn="Injuries shown"
-                    textOff="Injuries hidden"
-                    flag={showInjuries}
-                    setFlag={setShowInjuries}
-                />
-                <ControlButton
-                    type="toggle"
-                    textOn="Other crashes shown"
-                    textOff="Other crashes hidden"
-                    flag={showMinorCrashes}
-                    setFlag={setShowMinorCrashes}
-                />
+                {/* <h2>Key</h2>
+                <div style={{ display: "flex", jusitfyContent: 'center', alignItems: 'center', marginBottom: '10px' }}>
+                    <div style={{
+                        height: '15px',
+                        width: '15px',
+                        backgroundColor: 'yellow',
+                        borderRadius: '50%',
+                        opacity: .5,
+                        marginRight: '8px'
+                    }} />
+                    <label>
+                        <span>Nonfatal crash</span>
+                    </label>
+                </div>
+                <div style={{ display: "flex", jusitfyContent: 'center', alignItems: 'center', marginBottom: '10px' }}>
+                    <div style={{
+                        height: '15px',
+                        width: '15px',
+                        backgroundColor: 'orange',
+                        borderRadius: '50%',
+                        marginRight: '8px'
+                    }} />
+                    <label>
+                        <span>Crash involving injury</span>
+                    </label>
+                </div>
+                <div style={{ display: "flex", jusitfyContent: 'center', alignItems: 'center', marginBottom: '10px' }}>
+                    <div style={{
+                        height: '15px',
+                        width: '15px',
+                        backgroundColor: 'red',
+                        borderRadius: '50%',
+                        marginRight: '8px'
+                    }} />
+                    <label>
+                        <span>Fatal crash</span>
+                    </label>
+                </div> */}
 
-                <h2>Style</h2>
+                <h2>Filters</h2>
+                <div>
+                    <ControlButton
+                        type="checkbox"
+                        textOn="Fatal crashes"
+                        textOff="Fatal crashes"
+                        flag={showDeaths}
+                        setFlag={setShowDeaths}
+                        color={'red'}
+                    />
+                    <ControlButton
+                        type="checkbox"
+                        textOn="Crashes involving injuries"
+                        textOff="Crashes involving injuries"
+                        flag={showInjuries}
+                        setFlag={setShowInjuries}
+                        color={'orange'}
+                    />
+                    <ControlButton
+                        type="checkbox"
+                        textOn="Crashes with no deaths or injuries"
+                        textOff="Crashes with no deaths or injuries"
+                        flag={showMinorCrashes}
+                        setFlag={setShowMinorCrashes}
+                        color={'yellow'}
+                    />
+                </div>
                 <ControlButton
                     type="toggle"
                     textOn="City council districts shown"
@@ -73,6 +115,8 @@ function Controls(props) {
                     setFlag={setHexVisibility}
                     setSecondaryFlag={setDistrictVisibility}
                 />
+
+                <h2>Style</h2>
             </div>
             <p><strong>Source:</strong> <a href="#">IDS analysis</a> of <a href="https://data.bloomington.in.gov/dataset/traffic-data">Bloomington traffic data</a></p>
         </div>
