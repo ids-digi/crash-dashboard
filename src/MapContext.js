@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react"
 import './App.css'
 import Map from './Map.js'
+// import geojson from 'https://raw.githubusercontent.com/carsonology/crash-data/main/master_crash_clean.min.geojson?token=GHSAT0AAAAAACASYJVWBVYK2IHSMY7KBEJ6ZBLJOSA'
 // import geojson from './data/master_crash_clean.min.geojson'
-import geojson from './data/master_crash_clean.sample.min.geojson'
+// import geojson from './data/master_crash_clean.sample.min.geojson'
 import mapboxgl from 'mapbox-gl';
 import * as turf from '@turf/turf'
 
@@ -17,8 +18,11 @@ function MapContext(props) {
 
     mapboxgl.accessToken = 'pk.eyJ1IjoiY3RlcmJ1c2giLCJhIjoiY2t0dnZrYjM4MmU0aDJvbzM1dTFqbDY1NiJ9.zdZur9mZOlVhIxAoiqVwBA'
 
+    const geojson = 'https://raw.githubusercontent.com/carsonology/crash-data/main/master_crash_clean.min.geojson'
+    // const geojson = 'https://raw.githubusercontent.com/carsonology/crash-data/main/master_crash_clean.sample.min.geojson?token=GHSAT0AAAAAACASYJVWHAPSSNAAYY6IYKTGZBLJP6A'
     const [data, setData] = useState(geojson)
     const [hexGridData, setHexGridData] = useState(null)
+
 
     useEffect(() => {
         const bbox = [-86.70764843085207, 38.980672784175255, -86.33708588689486, 39.54695628365925]
