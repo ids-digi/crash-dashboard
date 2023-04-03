@@ -2,16 +2,18 @@ import React, { useState, Fragment } from "react"
 import './App.css'
 import Switch from "react-switch"
 import ReactSlider from 'react-slider'
+// import 'react-input-checkbox/lib/react-input-checkbox.min.css';
+import { Checkbox } from 'react-input-checkbox';
 
 function ControlButton(props) {
 
-    const { type, textOn, textOff, flag, setFlag, flagSecondary, smallLabels, setSecondaryFlag } = props
+    const { type, textOn, textOff, flag, setFlag, flagSecondary, smallLabels, setSecondaryFlag, color } = props
 
     const [text, setText] = useState(textOn)
 
     const onChange = () => {
 
-        if (type == "toggle") {
+        if (type == "toggle" || type == "checkbox") {
             setFlag(!flag)
             if (setSecondaryFlag) {
                 // console.log('setting secondary flag', setSecondaryFlag)
@@ -30,7 +32,15 @@ function ControlButton(props) {
             return (
                 <div className="dashControl">
                     <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        {/* {color && <div style={{
+                            height: '15px',
+                            width: '15px',
+                            backgroundColor: color,
+                            borderRadius: '50%',
+                            marginRight: '8px'
+                        }} />} */}
                         <span>{text}</span>
+
                         <Switch
                             className={'react-switch'}
                             onChange={onChange}
@@ -42,6 +52,20 @@ function ControlButton(props) {
                             uncheckedIcon={<Fragment />}
                             height={22}
                             width={45}
+                        />
+                    </label>
+                </div>
+            )
+        case "checkbox":
+            return (
+                <div className="dashControl">
+                    <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span>{text}</span>
+                        <Checkbox
+                            // theme="fancy-checkbox"
+                            // disabled={props.disabled}
+                            value={flag}
+                            onChange={onChange}
                         />
                     </label>
                 </div>
