@@ -25,6 +25,7 @@ function Map(props) {
     const hexColor = "rgb(119, 216, 240)"
     const pointColor = "yellow"
     const pointColorDeath = "red"
+    const pointColorInjury = "orange"
     const borderColor = "rgb(53, 53, 53)"
     // const borderColor = "rgb(168, 152, 152)"
     const labelColor = "rgb(120,120,120)"
@@ -164,15 +165,12 @@ function Map(props) {
                     type: 'circle',
                     source: 'crash-data-source',
                     paint: {
-                        'circle-color': [
-                            'case',
-                            // if it has the "n" property, that means there was at least 1 death
-                            // since the geojson is minified, all entries with 0 or NaN listed
-                            // for the number of deaths had the "n" property removed
-                            ['boolean', ['has', 'n'], false],
+                        'circle-color': ["case",
+                            ['has', 'n'],
                             pointColorDeath,
-                            pointColor
-                        ],
+                            ["has", "a"],
+                            pointColorInjury,
+                            pointColor],
                         // adjust circle radius based on zoom level
                         'circle-radius': ['interpolate', ['linear'], ['zoom'],
                             // at zoom level 10 => 1 px
@@ -188,11 +186,16 @@ function Map(props) {
                         'circle-opacity': [
                             'case',
                             ['boolean', ['has', 'n'], false],
+                            .8,
+                            ['boolean', ['has', 'n'], false],
                             1,
                             .3
                         ],
                         // filter: ['has', 'n']
-                    }
+                    },
+                    cluster: true,
+                    clusterMaxZoom: 14, // Max zoom to cluster points on
+                    clusterRadius: 50 // Radius of each cluster when clustering points (defaults to 50)
                 })
 
 
@@ -229,6 +232,8 @@ function Map(props) {
                 const date = e.features[0].properties.d
                 const deaths = e.features[0].properties.n
                 const injuries = e.features[0].properties.a
+                const road1 = e.features[0].properties.r
+                const road2 = e.features[0].properties.i
 
                 // Ensure that if the map is zoomed out such that multiple
                 // copies of the feature are visible, the popup appears
@@ -247,6 +252,7 @@ function Map(props) {
                             <p style=margin-bottom:0;><strong>Injuries:</strong> ${injuries ? injuries : '0'}</p>
                             </div>
                         `
+                // <p style=margin-bottom:0;><strong>${road1}${road2 ? ' and ' + road2.charAt(0).toUpperCase() + road2.slice(1).toLowerCase() : ''}</strong></p>
 
                 // Populate the popup and set its coordinates
                 // based on the feature found.
@@ -349,12 +355,17 @@ function Map(props) {
 
     useEffect(() => {
         if (map) {
+            // console.log(hexVisibility)
+            // console.log(districtVisibility)
             map.setLayoutProperty('hexBins', 'visibility', hexVisibility ? 'visible' : 'none');
             map.setLayoutProperty('hex-borders', 'visibility', hexVisibility ? 'visible' : 'none');
 
             map.setLayoutProperty('districts', 'visibility', hexVisibility ? 'none' : 'visible');
             map.setLayoutProperty('district-labels', 'visibility', hexVisibility ? 'none' : 'visible');
             map.setLayoutProperty('district-borders', 'visibility', hexVisibility ? 'none' : 'visible');
+
+            console.log('districts', map.style._layers.districts.visibility)
+            console.log('hexbins', map.style._layers.hexBins.visibility)
         }
 
     }, [hexVisibility])
@@ -389,7 +400,7 @@ function Map(props) {
 
             map.setFilter('points', ['any', ...fullFilter])
 
-            // console.log(map.style._layers.points.filter)
+            console.log(map.style._layers.points)
         }
     }, [showDeaths, showInjuries, showMinorCrashes])
 
