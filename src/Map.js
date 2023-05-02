@@ -1,58 +1,69 @@
 import React, { useState, useEffect, useRef } from "react";
 import mapboxgl from 'mapbox-gl';
-import districts from './data/city-council-districts.geojson'
 import "mapbox-gl/dist/mapbox-gl.css";
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
+// @ts-ignore
+// eslint-disable-next-line import/no-webpack-loader-syntax
+mapboxgl.workerClass = require('worker-loader!mapbox-gl/dist/mapbox-gl-csp-worker').default;
 
 function Map(props) {
     const {
-        data,
-        hexVisibility,
-        districtVisibility,
-        hexGridData,
+        fatalData,
+        injuryData,
+        otherData,
+        // hexVisibility,
+        speedVisibility,
         showDeaths,
         showInjuries,
-        showMinorCrashes
+        showMinorCrashes,
+        showBikePedOnly,
+        years
     } = props
 
-    // console.log(hexGridData)
-
+    // used to render the map
     const [map, setMap] = useState(null);
     const mapContainer = useRef(null);
 
-    const districtColor = "rgba(255,255,255,0.2)"
-    const hexColor = "rgb(119, 216, 240)"
-    const pointColor = "yellow"
-    const pointColorDeath = "red"
-    const pointColorInjury = "orange"
-    const borderColor = "rgb(53, 53, 53)"
-    // const borderColor = "rgb(168, 152, 152)"
-    const labelColor = "rgb(120,120,120)"
+    const pointColor = "yellow" // non-fatal crash color
+    const pointColorDeath = "red" // fatal crash color
+    const pointColorInjury = "orange" // injury-only crash color
 
     useEffect(() => {
+
+        // colormap for speed limit lines
+        const speedCmap = ["#d7191c", "#fdae61", "#ffffbf", "#a6d96a", "#1a9641"]
+
+        // fix for making mapbox work with react app
+        // uncomment for deployment:
+        // mapboxgl.workerClass = require('worker-loader!mapbox-gl/dist/mapbox-gl-csp-worker').default;
 
         /* 
             INITIALIZE MAP
         */
         const initializeMap = ({ setMap, mapContainer }) => {
+
+            // instantiate the map
             const map = new mapboxgl.Map({
-                // it will know where to put the map based on the mapContainer ref
-                container: mapContainer.current,
-                // style: "mapbox://styles/mapbox/dark-v10",
-                style: "mapbox://styles/cterbush/clfyfv364003s01o4xuofdpp3",
-                // center it over Bloomington
-                center: [-86.52702437238956, 39.1656613635316],
-                zoom: 12,
-                // prevent from zooming out too far
-                minZoom: 10
-            }).addControl(
-                // add geocoder to enable search
+                container: mapContainer.current, // it will know where to put the map based on the mapContainer ref
+                style: 'mapbox://styles/cterbush/clfyfv364003s01o4xuofdpp3',
+                center: [-86.52702437238956, 39.1656613635316], // center it over Bloomington
+                zoom: 12.5, // default zoom
+                maxzoom: 22,
+                worldCopyJump: true, // fix for react
+                maxBounds: [ // prevent panning too far from Bloomington
+                    [-86.87628, 38.86386], // Southwest coordinates
+                    [-86.18347, 39.48197] // Northeast coordinates
+                ]
+            }).addControl( // add geocoder to enable search
                 new MapboxGeocoder({
                     accessToken: mapboxgl.accessToken,
-                    mapboxgl: mapboxgl
+                    mapboxgl: mapboxgl,
+                    collapsed: true
                 })
-            )
+            ).addControl(new mapboxgl.NavigationControl({ // Add zoom and rotation controls to the map.
+                showCompass: false
+            }), 'bottom-right')
 
             map.on("load", () => {
                 setMap(map)
@@ -62,158 +73,154 @@ function Map(props) {
                     ADD DATA SOURCES
                 */
                 // crash data points 
-                map.addSource('crash-data-source', {
+                // map.addSource('crash-data-source', {
+                //     // 'type': 'vector',
+                //     // url: 'mapbox://cterbush.asrfcark',
+                // })
+                map.addSource('injury-crash-source', {
                     'type': 'geojson',
-                    'data': data
+                    'data': injuryData
                 })
-                // city council district areas 
-                map.addSource('council-districts', {
+                map.addSource('other-crash-source', {
                     'type': 'geojson',
-                    'data': districts
+                    'data': otherData
                 })
-                // hexbins geojson (generated in MapContext)
-                map.addSource('hexbin-data', {
+                // fatal crashes
+                map.addSource('fatal-crash-source', {
                     'type': 'geojson',
-                    'data': hexGridData
+                    'data': fatalData
                 })
+                // speed limits
+                map.addSource('speed-limits', {
+                    'type': 'vector',
+                    url: 'mapbox://cterbush.5608sxsh'
+                })
+
+                const labelLayer = 'road-label' // id of label layer, to make sure this is still above all layers rendered below
 
                 /*
                     ADD LAYERS + STYLING
                 */
-                // city council districts
-                map.addLayer({
-                    id: 'districts',
-                    type: 'fill',
-                    source: 'council-districts',
-                    paint: {
-                        'fill-color': districtColor,
-                        'fill-opacity': ['case',
-                            ['boolean', ['feature-state', 'hover'], false],
-                            0.8,
-                            0.5
-                        ]
-                    },
-                }).addLayer({
-                    // gray border on each district
-                    'id': 'district-borders',
+
+                map.addLayer({ // speed limits
+                    'id': 'speed-limit-lines',
                     'type': 'line',
-                    'source': 'council-districts',
-                    'layout': {},
-                    'paint': {
-                        'line-color': borderColor,
-                        'line-width': 2
-                    }
-                }).addLayer({
-                    // label each district
-                    'id': 'district-labels',
-                    'type': 'symbol',
-                    'source': 'council-districts',
+                    'source': 'speed-limits',
+                    'source-layer': 'speed-limits-7bpvb8',
                     'layout': {
-                        'text-field': [
-                            'format',
-                            ['get', 'district_name'],
-                            { 'font-scale': 0.6 }
+                        visibility: 'visible', // show initially
+                    },
+                    'paint': {
+                        'line-color': {
+                            property: 's', // 's' property == speed limit
+                            stops: [
+                                // set colors based on the cmap defined above
+                                [16, speedCmap[4]], // speed limit <= 16
+                                [20, speedCmap[3]], // speed limit 20, 25
+                                [30, speedCmap[2]], // speed limit 30, 35
+                                [40, speedCmap[1]], // speed limit 40, 45
+                                [55, speedCmap[0]], // speed limit 55 or above
+                            ]
+                        },
+                        'line-width': ['interpolate', ['linear'], ['zoom'],
+                            // at zoom level 10 => .5px
+                            10, 1,
+                            // at zoom level 12
+                            12, 1,
+                            14, 2,
+                            // at zoom level 20
+                            20, 15
                         ],
-                    },
-                    "paint": {
-                        "text-color": labelColor
+                        'line-opacity': .5
                     }
-                })
+                }, labelLayer) // below label layer
 
-                // hexbins
-                map.addLayer({
-                    id: 'hexBins',
-                    type: 'fill',
-                    source: 'hexbin-data',
-                    // set visibility as visible initially
-                    // then it can be toggled later 
-                    'layout': {
-                        'visibility': 'visible'
-                    },
-                    'paint': {
-                        'fill-color': hexColor,
-                        'fill-opacity': [
-                            "interpolate", ["linear"], ["get", "density"],
-                            // if there are zero points, max opacity = 0
-                            0, 0,
-                            // if the density = 1, max opacity = 80%
-                            1, .8
-                        ]
-                    }
-                }).addLayer({
-                    // light border on each hexbin
-                    'id': 'hex-borders',
-                    'type': 'line',
-                    'source': 'hexbin-data',
-                    'layout': {},
-                    'paint': {
-                        'line-color': borderColor,
-                        // 'line-width': ['match', ['get', 'density'], 0, 0, 1]
-                        'line-width': [
-                            'case',
-                            ['boolean', ['feature-state', 'hover'], false],
-                            ['match', ['get', 'density'], 0, 0, 4],
-                            ['match', ['get', 'density'], 0, 0, 1]
-                        ]
+                // set up point radius based on zoom for each of the point layers below
+                const point_radius = ['interpolate', ['linear'], ['zoom'],
+                    // at zoom level 10 => 1 px
+                    10, 1,
+                    // at zoom level 12 => 1.5 px
+                    12, 1.5,
+                    14, 3,
+                    // at zoom level 20 => 20 px
+                    20, 10
+                ]
 
-                    }
-                })
-
-                // individual crash data points
-                map.addLayer({
-                    id: 'points',
+                map.addLayer({ // crashes with no injuries or deaths
+                    id: 'points-other',
                     type: 'circle',
-                    source: 'crash-data-source',
+                    source: 'other-crash-source',
+                    // 'source-layer': 'master_minormin',
+                    layout: {
+                        visibility: 'visible',
+                    },
                     paint: {
-                        'circle-color': ["case",
-                            ['has', 'n'],
-                            pointColorDeath,
-                            ["has", "a"],
-                            pointColorInjury,
-                            pointColor],
-                        // adjust circle radius based on zoom level
+                        'circle-color': pointColor,
+                        'circle-radius': point_radius,
+                        // no stroke
+                        'circle-stroke-width': 0,
+                        'circle-opacity': .3
+                    },
+                }, labelLayer) // below label layer
+
+                map.addLayer({ // crashes with injuries only
+                    id: 'points-injuries',
+                    type: 'circle',
+                    source: 'injury-crash-source',
+                    // 'source-layer': 'master_injuriesmin',
+                    layout: {
+                        visibility: 'visible',
+                    },
+                    paint: {
+                        'circle-color': pointColorInjury,
+                        'circle-radius': point_radius,
+                        // no stroke
+                        'circle-stroke-width': 0,
+                        'circle-opacity': .8
+                    },
+                }, labelLayer)
+
+                map.addLayer({ // fatal crashes
+                    id: 'points-death',
+                    type: 'circle',
+                    source: 'fatal-crash-source',
+                    layout: {
+                        visibility: 'visible',
+                    },
+                    paint: {
+                        'circle-color': pointColorDeath,
+                        // make deaths 1.5x bigger so they're more visible
                         'circle-radius': ['interpolate', ['linear'], ['zoom'],
                             // at zoom level 10 => 1 px
-                            10, 1,
+                            10, 1.5,
                             // at zoom level 12 => 1.5 px
-                            12, 1.5,
-                            14, 3,
+                            12, 3,
+                            14, 6,
                             // at zoom level 20 => 20 px
                             20, 20
                         ],
                         // no stroke
                         'circle-stroke-width': 0,
-                        'circle-opacity': [
-                            'case',
-                            ['boolean', ['has', 'n'], false],
-                            .8,
-                            ['boolean', ['has', 'n'], false],
-                            1,
-                            .3
-                        ],
-                        // filter: ['has', 'n']
+                        'circle-opacity': 1
                     },
-                    cluster: true,
-                    clusterMaxZoom: 14, // Max zoom to cluster points on
-                    clusterRadius: 50 // Radius of each cluster when clustering points (defaults to 50)
-                })
+                }, labelLayer)
 
 
 
             })
         }
 
-        if (!map) initializeMap({ setMap, mapContainer });
+        // if the map hasn't rendered yet and we have all our data loaded, render it
+        if (!map && fatalData.features.length > 0 && otherData.features.length > 0 && injuryData.features.length > 0) initializeMap({ setMap, mapContainer });
 
-    }, [data, hexGridData]);
-
+    }, [map, fatalData.features.length, otherData.features.length, injuryData.features.length]);
 
     /*
         POPUPS & HOVER EFFECTS
     */
     useEffect(() => {
 
-        if (map) {
+        if (map) { // once the map has rendered
             // Create a popup, but don't add it to the map yet.
             const popup = new mapboxgl.Popup({
                 closeButton: false,
@@ -221,19 +228,23 @@ function Map(props) {
                 className: 'popup'
             })
 
-            // display the popup when a point is hovered over
-            map.on('mouseenter', 'points', (e) => {
-                // Change the cursor style as a UI indicator.
-                map.getCanvas().style.cursor = 'pointer';
+            // function to show the pop up on each points layer
+            const popupFunction = (e) => {
+                map.getCanvas().style.cursor = 'pointer' // change cursor when hovering
 
-                // Copy coordinates array.
-                const coordinates = e.features[0].geometry.coordinates.slice()
-                const primaryFactor = e.features[0].properties.p
-                const date = e.features[0].properties.d
-                const deaths = e.features[0].properties.n
-                const injuries = e.features[0].properties.a
-                const road1 = e.features[0].properties.r
-                const road2 = e.features[0].properties.i
+                const hoveredPoint = e.features[0]
+
+                const coordinates = hoveredPoint.geometry.coordinates.slice() // get coords
+                const primaryFactor = hoveredPoint.properties.f // get primary factor
+                const date = hoveredPoint.properties.dt // get date
+                let deaths = hoveredPoint.properties.d ? hoveredPoint.properties.d : 0
+                let injuries = hoveredPoint.properties.i ? hoveredPoint.properties.i : 0
+                const mannerOfCollision = hoveredPoint.properties.m
+                const road1 = hoveredPoint.properties['r'] // Roadway Id
+                const road2 = hoveredPoint.properties['r2'] // Intersecting Road
+                const pedestrians = hoveredPoint.properties['p'] ? hoveredPoint.properties['p'] : false // If pedestrians involved in crash
+                const cyclists = hoveredPoint.properties['c'] ? hoveredPoint.properties['c'] : false  // If cyclists involved in crash
+                const vehicles = hoveredPoint.properties['v'] // Num vehicles involved in crash
 
                 // Ensure that if the map is zoomed out such that multiple
                 // copies of the feature are visible, the popup appears
@@ -242,201 +253,115 @@ function Map(props) {
                     coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
                 }
 
-                console.log(e.features[0].properties)
-
+                // create popup contents based on the data extracted above
                 let popupHTML = `
-                            <p style=margin-bottom:0;><strong>${new Date(date).toLocaleDateString('en-us', { hour: "numeric", year: "numeric", month: "short", day: "numeric" })}</strong></p>
-                            <p style=margin-bottom:0;><strong>Primary factor:</strong> ${primaryFactor ? primaryFactor.charAt(0).toUpperCase() + primaryFactor.slice(1).toLowerCase() : 'Not listed'}</p>
-                            <div style="display: flex; justify-content: space-between;">
-                            <p style=margin-bottom:0;><strong>Deaths:</strong> ${deaths ? deaths : '0'}</p>
-                            <p style=margin-bottom:0;><strong>Injuries:</strong> ${injuries ? injuries : '0'}</p>
+                            <div class="tooltip">
+                                <p style=font-size:1.5em;margin-bottom:0;><strong>${road1}${road2 ? ' & ' + road2 : ''}</strong></p>
+                                <p style=color:var(--darkgray);margin-top:.2em;margin-bottom:0;>${new Date(date).toLocaleDateString('en-us', { hour: "numeric", year: "numeric", month: "short", day: "numeric" })}</p>
+                                <p style=margin-bottom:0;><strong>Primary factor:</strong> ${primaryFactor ? primaryFactor.charAt(0).toUpperCase() + primaryFactor.slice(1).toLowerCase() : 'Not listed'}</p>
+                                <p style=margin-bottom:0;><strong>Type of collision:</strong> ${mannerOfCollision ? mannerOfCollision.charAt(0).toUpperCase() + mannerOfCollision.slice(1).toLowerCase() : 'Not listed'}</p>
+                                <table>
+                                    <tr>
+                                        <th>Deaths</th>
+                                        <td>${deaths}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Injuries</th>
+                                        <td>${injuries}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Pedestrians involved</th>
+                                        <td>${pedestrians ? "Yes" : 'No'}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Cyclists involved</th>
+                                        <td>${cyclists ? "Yes" : 'No'}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Vehicles involved</th>
+                                        <td>${vehicles ? vehicles : 'Unknown'}</td>
+                                    </tr>
+                                </table>
                             </div>
-                        `
-                // <p style=margin-bottom:0;><strong>${road1}${road2 ? ' and ' + road2.charAt(0).toUpperCase() + road2.slice(1).toLowerCase() : ''}</strong></p>
+                            `
 
                 // Populate the popup and set its coordinates
                 // based on the feature found.
                 popup.setLngLat(coordinates).setHTML(popupHTML).addTo(map);
-            })
+            }
 
-            // display the popup when a hexbin is hovered over
-            map.on('mousemove', 'hexBins', (e) => {
-                // Change the cursor style as a UI indicator.
-                map.getCanvas().style.cursor = 'pointer';
-
-                // Get coordinates
-                const vertices = e.features[0].geometry.coordinates[0]
-                // average of top two vertices
-                const coordinates = [((vertices[1][0] + vertices[2][0]) / 2), vertices[4][1]]
-                const numCrashes = e.features[0].properties.numPoints
-                const data = JSON.parse(e.features[0].properties.data)
-
-                let totalDeaths = 0
-                let totalInjuries = 0
-                if (data.length > 0) {
-                    totalDeaths = data.reduce(
-                        (acc, current) => acc + (current.n ? current.n : 0), 0
-                    )
-                    totalInjuries = data.reduce(
-                        (acc, current) => acc + (current.a ? current.a : 0), 0
-                    )
-                }
-
-                let popupHTML = `
-                            <span style=margin-bottom:0;><strong>${numCrashes}</strong> crash${numCrashes > 1 ? `es` : ''}</span>
-                            <span><strong>${totalDeaths}</strong> death${totalDeaths !== 1 ? `s` : ''}</span>
-                            <span><strong>${totalInjuries}</strong> injur${totalInjuries !== 1 ? `ies` : 'y'}</span>
-                        `
-
-                if (e.features[0].properties.numPoints > 0) {
-                    // // Populate the popup and set its coordinates
-                    // // based on the feature found.
-                    popup.setLngLat(coordinates).setHTML(popupHTML).addTo(map);
-                } else if (e.features[0].properties.numPoints == 0) {
-                    map.getCanvas().style.cursor = '';
-                    popup.remove();
-                }
-            }).on('mouseleave', 'hexBins', () => {
+            const popupRemove = () => {
                 map.getCanvas().style.cursor = '';
                 popup.remove();
+            }
+
+            // apply popup function to all points layers
+            const pointLayers = ['points-death',
+                'points-injuries',
+                'points-other']
+            pointLayers.forEach((id) => {
+                map.on('mouseenter', id, (e) => { popupFunction(e, id) })
+                map.on('mouseleave', id, popupRemove)
             })
 
-            // hide the popup when the point is no longer hovered
-            map.on('mouseleave', 'points', () => {
-                map.getCanvas().style.cursor = '';
-                popup.remove();
-            })
-
-            // hover effect => council districts
-            let hoverId = null;
-
-            // map.on('mousemove', 'districts', (e) => {
-            //     console.log(e.features[0])
-
-            //     if (e.features.length > 0) {
-            //         if (hoveredStateId !== null) {
-            //             map.setFeatureState(
-            //                 { source: 'council-districts', id: hoveredStateId },
-            //                 { hover: false }
-            //             );
-            //         }
-            //         hoveredStateId = e.features[0].properties.district_id;
-            //         map.setFeatureState(
-            //             { source: 'council-districts', id: hoveredStateId },
-            //             { hover: true }
-            //         );
-            //     }
-            // })
-
-            map.on('mousemove', 'hexBins', (e) => {
-                if (hoverId) {
-                    map.removeFeatureState({
-                        source: 'hexbin-data',
-                        id: hoverId
-                    })
-                }
-
-                hoverId = e.features[0].id
-
-                map.setFeatureState(
-                    {
-                        source: 'hexbin-data',
-                        id: hoverId
-                    },
-                    {
-                        hover: true
-                    }
-                )
-
-            })
         }
 
     }, [map])
 
-    useEffect(() => {
+    useEffect(() => { // hide/show speed limits
         if (map) {
-            // console.log(hexVisibility)
-            // console.log(districtVisibility)
-            map.setLayoutProperty('hexBins', 'visibility', hexVisibility ? 'visible' : 'none');
-            map.setLayoutProperty('hex-borders', 'visibility', hexVisibility ? 'visible' : 'none');
-
-            map.setLayoutProperty('districts', 'visibility', hexVisibility ? 'none' : 'visible');
-            map.setLayoutProperty('district-labels', 'visibility', hexVisibility ? 'none' : 'visible');
-            map.setLayoutProperty('district-borders', 'visibility', hexVisibility ? 'none' : 'visible');
-
-            console.log('districts', map.style._layers.districts.visibility)
-            console.log('hexbins', map.style._layers.hexBins.visibility)
+            map.setLayoutProperty('speed-limit-lines', 'visibility', speedVisibility ? 'visible' : 'none');
         }
 
-    }, [hexVisibility])
+    }, [speedVisibility, map])
 
     useEffect(() => {
+        // apply year & bike/ped filters to all point layers
+        const pointLayers = ['points-death',
+            'points-injuries',
+            'points-other']
+
+        let yearFilter = []
+        // iterate through the `years` state var, which is controlled by the years slider in the Controls menu
+        // for each year, add a filtering string that can be added to the map layer
+        years.forEach((year) => {
+            yearFilter.push(['in', year.toString(), ['get', 'dt']])
+        })
         if (map) {
-            map.setLayoutProperty('districts', 'visibility', districtVisibility ? 'visible' : 'none');
-            map.setLayoutProperty('district-labels', 'visibility', districtVisibility ? 'visible' : 'none');
-            map.setLayoutProperty('district-borders', 'visibility', districtVisibility ? 'visible' : 'none');
-
-            map.setLayoutProperty('hexBins', 'visibility', districtVisibility ? 'none' : 'visible');
-            map.setLayoutProperty('hex-borders', 'visibility', districtVisibility ? 'none' : 'visible');
+            if (showBikePedOnly) {
+                pointLayers.map((id) => map.setFilter(id, ['all',
+                    ['any', ...yearFilter],
+                    ['any', ['get', 'p'], ['get', 'c']]
+                ]))
+            }
+            else {
+                pointLayers.map((id) => map.setFilter(id, ['any', ...yearFilter]))
+            }
         }
-    }, [districtVisibility])
+    }, [showBikePedOnly, years, map])
 
-    useEffect(() => {
+    useEffect(() => { // hide/show fatal crash points
         if (map) {
-            let filter1 = showDeaths ? ["has", "n"] : null
-            let filter2 = showInjuries ? ["has", "a"] : null
-            let filter3 = showMinorCrashes ? ['all', ["!has", "a"], ["!has", "n"]] : null
-
-            let fullFilter = []
-            if (filter1) {
-                fullFilter.push(filter1)
-            }
-            if (filter2) {
-                fullFilter.push(filter2)
-            }
-            if (filter3) {
-                fullFilter.push(filter3)
-            }
-
-            map.setFilter('points', ['any', ...fullFilter])
-
-            console.log(map.style._layers.points)
+            map.setLayoutProperty('points-death', 'visibility', showDeaths ? 'visible' : 'none')
         }
-    }, [showDeaths, showInjuries, showMinorCrashes])
+    }, [showDeaths, map])
 
+    useEffect(() => { // hide/show nonfatal crash points
+        if (map) {
+            map.setLayoutProperty('points-other', 'visibility', showMinorCrashes ? 'visible' : 'none');
+        }
+    }, [showMinorCrashes, map])
+
+    useEffect(() => { // hide/show crash points with injuries
+        if (map) {
+            map.setLayoutProperty('points-injuries', 'visibility', showInjuries ? 'visible' : 'none');
+        }
+    }, [showInjuries, map])
 
     return (
-        <div ref={mapContainer} className="mapContainer" />
+        <div ref={mapContainer} className="mapContainerDiv" />
     )
 }
 
 
 export default Map
-
-
-// 10, [
-//     'case',
-//     ['boolean', ['has', 'n'], false],
-//     1.5,
-//     1
-// ],
-// // at zoom level 12 => 1.5 px
-// 12, [
-//     'case',
-//     ['boolean', ['has', 'n'], false],
-//     2.25,
-//     1.5
-// ],
-// 14, [
-//     'case',
-//     ['boolean', ['has', 'n'], false],
-//     4.5,
-//     3
-// ],
-// // at zoom level 20 => 20 px
-// 20, [
-//     'case',
-//     ['boolean', ['has', 'n'], false],
-//     30,
-//     20
-// ]
