@@ -315,6 +315,10 @@ function Map(props) {
 
     }, [speedVisibility, map])
 
+    const pedestrian_involved = 'p'
+    const cyclist_involved = 'c'
+    const datetime = 'dt'
+
     useEffect(() => {
         // apply year & bike/ped filters to all point layers
         const pointLayers = ['points-death',
@@ -325,13 +329,13 @@ function Map(props) {
         // iterate through the `years` state var, which is controlled by the years slider in the Controls menu
         // for each year, add a filtering string that can be added to the map layer
         years.forEach((year) => {
-            yearFilter.push(['in', year.toString(), ['get', 'dt']])
+            yearFilter.push(['in', year.toString(), ['get', datetime]])
         })
         if (map) {
             if (showBikePedOnly) {
                 pointLayers.map((id) => map.setFilter(id, ['all',
                     ['any', ...yearFilter],
-                    ['any', ['get', 'p'], ['get', 'c']]
+                    ['any', ['has', pedestrian_involved], ['has', cyclist_involved]]
                 ]))
             }
             else {
